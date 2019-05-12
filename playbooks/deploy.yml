@@ -2,6 +2,9 @@
 - hosts: app
   become: yes
   serial: 1
+  vars:
+    app_location: /opt/webserver
+    app_name: webserver.py
 
   pre_tasks:
     - name: Disable the backend server in HAProxy.
@@ -14,13 +17,37 @@
       with_items: "{{ groups.balancer }}"
 
   tasks:
-    - debug: msg="Deployment would be done here."
+    - debug: msg="Deployment starts..."
+
+    - name: checkout from git
+      git:
+        repo: https://github.com/chugu/py_webserver.git
+        dest: "{{ app_location }}"
+        version: "{{ app_version }}"
+
+    - name: "stop webserver"
+      shell: pkill -f {{ app_name }}
+      ignore_errors: yes
+
+    - name: start webserver
+      shell:  cd {{app_location}}; nohup python {{app_name}} </dev/null >/dev/null 2>&1
+      args:
+        chdir: "{{ app_location}}"
+      #shell: (cd {{ app_location }}; sh start.sh &)
+      async: 10
+      poll:   0
+
+    - name: add job for "@reboot /some/job.sh"
+      cron:
+        name: "start webserver"
+        special_time: reboot
+        job: chdir {{app_location}}; /usr/bin/nohup python {{app_name}} >log.log &2>1
 
   post_tasks:
     - name: Wait for backend to come back up.
       wait_for:
         host: '{{ inventory_hostname }}'
-        port: 80
+        port: 8080
         state: started
         timeout: 60
 

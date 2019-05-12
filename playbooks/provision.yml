@@ -6,11 +6,15 @@
     firewall_allowed_tcp_ports:
       - "22"
       - "80"
+      - "8080"
+    #haproxy_frontend_bind_port: 8080
+    haproxy_backend_httpchk: 'GET /check'
     haproxy_backend_servers:
       - name: 192.168.4.3
-        address: 192.168.4.3:80
+        address: 192.168.4.3:8080
       - name: 192.168.4.4
-        address: 192.168.4.4:80
+        address: 192.168.4.4:8080
+
 
   roles:
     - geerlingguy.firewall
@@ -22,8 +26,15 @@
   vars:
     firewall_allowed_tcp_ports:
       - "22"
-      - "80"
+      - "8080"
 
   roles:
     - geerlingguy.firewall
-    - geerlingguy.apache
+
+
+  tasks:
+  - name: Ensure Pip is installed.
+    apt:
+      name: "python-pip"
+      state: present
+      update_cache: yes
